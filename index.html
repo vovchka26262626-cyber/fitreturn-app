@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FitReturn">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0b1120">
+    <title>FitReturn — Умный дневник тренировок</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] },
+                colors: {
+                    brand: { 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7' },
+                    accent: { 400: '#34d399', 500: '#10b981', 600: '#059669' }
+                }
+            }}
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .scroll-container { -webkit-overflow-scrolling: touch; }
+    </style>
+</head>
+<body class="h-[100dvh] w-full overflow-hidden flex justify-center bg-[#0b1120] text-slate-100 selection:bg-brand-500 selection:text-white">
+
+    <div class="w-full max-w-md h-full bg-[#0b1120] flex flex-col relative overflow-hidden">
+        <header class="shrink-0 z-30 bg-[#0b1120]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-800/80">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-dumbbell text-white text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base tracking-tight leading-none text-white flex items-center gap-2">
+                        FitReturn
+                        <span id="sync-badge" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400">
+                            <i class="fa-solid fa-cloud text-[9px] mr-1"></i> синхр.
+                        </span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Умный трекер с прогрессией</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button onclick="openFullscreenHelpModal()" aria-label="Как открыть на весь экран" class="w-8 h-8 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/70 text-slate-300 flex items-center justify-center transition active:scale-95">
+                    <i class="fa-solid fa-expand text-xs text-brand-400"></i>
+                </button>
+                <button id="header-timer-btn" onclick="openTimerModal()" aria-label="Таймер отдыха" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/70 text-xs font-semibold text-slate-200 transition active:scale-95">
+                    <i class="fa-regular fa-clock text-brand-400"></i>
+                    <span id="header-timer-text">Таймер</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="floating-timer" class="hidden shrink-0 z-20 mx-3 mt-2 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-brand-500/40 p-3 shadow-xl shadow-black/50">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 font-bold text-base" id="floating-timer-countdown">01:30</div>
+                    <div>
+                        <div class="text-xs font-semibold text-white">Отдых между подходами</div>
+                        <div class="text-[11px] text-slate-400" id="floating-timer-sub">Восстанови дыхание</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="adjustTimer(-15)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium active:scale-95">-15с</button>
+                    <button onclick="adjustTimer(30)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium active:scale-95">+30с</button>
+                    <button onclick="stopTimer()" aria-label="Остановить таймер" class="w-8 h-8 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 flex items-center justify-center active:scale-95 ml-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                <div id="floating-timer-bar" class="bg-gradient-to-r from-brand-500 to-accent-400 h-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <main id="main-scroll-area" class="flex-1 overflow-y-auto scroll-container px-3.5 pt-3 pb-6">
+
+            <section id="tab-workout" class="space-y-3.5">
+                <div id="workout-intro-card" class="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-brand-950/60 border border-slate-800 p-3.5 shadow-lg">
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-accent-500/15 text-accent-400 border border-accent-500/20">Стартовый сплит</span>
+                        <button onclick="toggleIntroCard()" class="text-[11px] text-slate-400 hover:text-white">Скрыть</button>
+                    </div>
+                    <h2 class="text-base font-bold text-white leading-snug">Грудь и Трицепс: Возвращение</h2>
+                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">Жим гантелей (30°), разводка и французский жим. Веса на следующую тренировку растут автоматически!</p>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="loadDefaultChestWorkout()" class="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand-500 to-accent-500 hover:from-brand-400 hover:to-accent-400 text-slate-950 font-bold text-xs shadow-lg shadow-brand-500/20 flex items-center justify-center gap-1.5 transition active:scale-95">
+                            <i class="fa-solid fa-rotate-right"></i> Сбросить к базовым (3 упр.)
+                        </button>
+                        <button onclick="openExercisePicker()" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95">
+                            <i class="fa-solid fa-plus text-brand-400"></i> Своё
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800/80 text-xs">
+                    <div class="flex items-center gap-2 text-slate-300">
+                        <i class="fa-solid fa-stopwatch text-brand-400"></i>
+                        <span>Авто-таймер после подхода:</span>
+                    </div>
+                    <select id="default-rest-select" onchange="updateDefaultRest(this.value)" class="bg-slate-800 text-white font-semibold rounded-lg px-2.5 py-1 border border-slate-700 focus:outline-none focus:border-brand-500 text-xs">
+                        <option value="60">60 сек</option>
+                        <option value="90" selected>90 сек</option>
+                        <option value="120">120 сек</option>
+                        <option value="180">3 мин</option>
+                        <option value="0">Выкл</option>
+                    </select>
+                </div>
+
+                <div id="active-exercises-list" class="space-y-4"></div>
+
+                <div id="workout-bottom-actions" class="space-y-3 pt-2">
+                    <button onclick="openExercisePicker()" class="w-full py-3 rounded-2xl border-2 border-dashed border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-98">
+                        <i class="fa-solid fa-circle-plus text-brand-400 text-sm"></i> Добавить упражнение в тренировку
+                    </button>
+                    <button id="finish-workout-btn" onclick="finishWorkout()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-accent-500 to-emerald-600 hover:from-accent-400 hover:to-emerald-500 text-slate-950 font-extrabold text-sm shadow-xl shadow-accent-500/20 flex items-center justify-center gap-2 transition active:scale-98">
+                        <i class="fa-solid fa-flag-checkered"></i> Завершить и сохранить тренировку
+                    </button>
+                </div>
+            </section>
+
+            <section id="tab-history" class="hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">История тренировок</h2>
+                        <p class="text-xs text-slate-400">Все твои сохраненные сессии и оценки</p>
+                    </div>
+                    <span id="history-count-badge" class="px-2.5 py-1 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700">0</span>
+                </div>
+                <div id="history-list-container" class="space-y-3"></div>
+            </section>
+
+            <section id="tab-analytics" class="hidden space-y-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Графики прогресса</h2>
+                    <p class="text-xs text-slate-400">Динамика рабочих весов и расчетного максимума</p>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                    <label for="analytics-exercise-select" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Выбери упражнение:</label>
+                    <select id="analytics-exercise-select" onchange="renderAnalytics()" class="w-full bg-slate-800 text-white font-semibold rounded-xl px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:border-brand-500 text-sm"></select>
+                    <div class="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/80">
+                        <button onclick="setChartMetric('maxWeight')" id="metric-btn-maxWeight" class="py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-slate-950 transition">Макс. вес</button>
+                        <button onclick="setChartMetric('e1rm')" id="metric-btn-e1rm" class="py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">1ПМ (расчет)</button>
+                        <button onclick="setChartMetric('volume')" id="metric-btn-volume" class="py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Тоннаж (кг)</button>
+                    </div>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <div class="text-xs text-slate-400" id="chart-subtitle">Динамика по тренировкам</div>
+                            <div class="text-xl font-extrabold text-white mt-0.5" id="chart-current-value">—</div>
+                        </div>
+                        <div id="chart-trend-badge" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-accent-500/15 text-accent-400 border border-accent-500/20">Старт</div>
+                    </div>
+                    <div id="svg-chart-container" class="w-full h-52 bg-slate-950/70 rounded-xl border border-slate-800/70 flex items-center justify-center relative overflow-hidden p-2"></div>
+                    <div id="analytics-next-recommendation" class="mt-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3" id="analytics-stats-cards"></div>
+            </section>
+
+            <section id="tab-exercises" class="hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">База упражнений</h2>
+                        <p class="text-xs text-slate-400">Твои упражнения и шаг прогрессии весов</p>
+                    </div>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-brand-400">Добавить своё упражнение</h3>
+                    <div>
+                        <label for="new-ex-name" class="text-[11px] text-slate-400 block mb-1">Название упражнения</label>
+                        <input id="new-ex-name" type="text" placeholder="Например: Жим лежа в тренажере" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label for="new-ex-category" class="text-[11px] text-slate-400 block mb-1">Мышечная группа</label>
+                            <select id="new-ex-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+                                <option value="Грудь">Грудь</option>
+                                <option value="Трицепс">Трицепс</option>
+                                <option value="Спина">Спина</option>
+                                <option value="Плечи">Плечи</option>
+                                <option value="Бицепс">Бицепс</option>
+                                <option value="Ноги">Ноги</option>
+                                <option value="Пресс">Пресс</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="new-ex-step" class="text-[11px] text-slate-400 block mb-1">Шаг прогрессии (кг)</label>
+                            <select id="new-ex-step" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+                                <option value="1">+1 кг (изоляция)</option>
+                                <option value="2">+2 кг (гантели)</option>
+                                <option value="2.5" selected>+2.5 кг (база)</option>
+                                <option value="5">+5 кг (тяжелая база)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label for="new-ex-weight" class="text-[11px] text-slate-400 block mb-1">Стартовый вес (кг)</label>
+                            <input id="new-ex-weight" type="text" inputmode="decimal" value="15" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label for="new-ex-reps" class="text-[11px] text-slate-400 block mb-1">Целевые повторения</label>
+                            <input id="new-ex-reps" type="text" value="10-12" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+                        </div>
+                    </div>
+                    <button onclick="createNewCustomExercise()" class="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition active:scale-95">
+                        <i class="fa-solid fa-plus mr-1"></i> Сохранить в базу
+                    </button>
+                </div>
+                <div id="exercises-catalog-list" class="space-y-2.5"></div>
+            </section>
+        </main>
+
+        <nav class="shrink-0 z-30 bg-[#0b1120]/95 backdrop-blur-md border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around">
+            <button onclick="switchTab('workout')" id="nav-btn-workout" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-brand-400 font-semibold transition">
+                <i class="fa-solid fa-fire-flame-curved text-lg mb-0.5"></i><span class="text-[10px]">Тренировка</span>
+            </button>
+            <button onclick="switchTab('history')" id="nav-btn-history" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-200 font-medium transition">
+                <i class="fa-solid fa-clock-rotate-left text-lg mb-0.5"></i><span class="text-[10px]">История</span>
+            </button>
+            <button onclick="switchTab('analytics')" id="nav-btn-analytics" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-200 font-medium transition">
+                <i class="fa-solid fa-chart-line text-lg mb-0.5"></i><span class="text-[10px]">Прогресс</span>
+            </button>
+            <button onclick="switchTab('exercises')" id="nav-btn-exercises" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-200 font-medium transition">
+                <i class="fa-solid fa-book-open text-lg mb-0.5"></i><span class="text-[10px]">Упражнения</span>
+            </button>
+        </nav>
+
+        <div id="modal-exercise-picker" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div class="w-full max-w-md bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl p-4 max-h-[85vh] flex flex-col shadow-2xl">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <h3 class="font-bold text-base text-white">Добавить упражнение</h3>
+                    <button onclick="closeExercisePicker()" aria-label="Закрыть" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="picker-exercises-list" class="overflow-y-auto py-3 space-y-2 flex-1"></div>
+                <div class="pt-2 border-t border-slate-800">
+                    <button onclick="closeExercisePicker(); switchTab('exercises');" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-brand-400 font-semibold text-xs">+ Создать новое своё упражнение</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-timer" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="w-full max-w-xs bg-slate-900 border border-slate-800 rounded-3xl p-5 text-center shadow-2xl">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Таймер отдыха</span>
+                    <button onclick="closeTimerModal()" aria-label="Закрыть" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+                <div class="my-5">
+                    <div id="modal-timer-display" class="text-5xl font-extrabold tracking-tight text-white font-mono">01:30</div>
+                    <p class="text-xs text-slate-400 mt-1.5">Звуковой сигнал по окончании</p>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <button onclick="startRestTimer(60)" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">1:00</button>
+                    <button onclick="startRestTimer(90)" class="py-2 rounded-xl bg-brand-500/20 border border-brand-500/40 text-xs font-bold text-brand-300">1:30</button>
+                    <button onclick="startRestTimer(120)" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">2:00</button>
+                    <button onclick="startRestTimer(180)" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">3:00</button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="stopTimer(); closeTimerModal();" class="flex-1 py-2.5 rounded-xl bg-rose-500/20 text-rose-300 font-bold text-xs">Сбросить</button>
+                    <button onclick="closeTimerModal()" class="flex-1 py-2.5 rounded-xl bg-brand-500 text-slate-950 font-bold text-xs">Свернуть</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-fullscreen-help" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-mobile-screen-button text-brand-400"></i>
+                        <h3 class="font-bold text-sm text-white">Как открыть на весь экран?</h3>
+                    </div>
+                    <button onclick="closeFullscreenHelpModal()" aria-label="Закрыть" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+                <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                    <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                        <div class="font-bold text-white flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-[10px]">1</span>
+                            Внутри приложения Gemini
+                        </div>
+                        <p class="text-slate-400">Рамка сверху и кнопка снизу — оболочка чата. Нажми кнопку внизу или открой код в браузере.</p>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+                        <div class="font-bold text-accent-400 flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded-full bg-accent-500/20 text-accent-400 flex items-center justify-center text-[10px]">2</span>
+                            Сделать отдельной иконкой на iPhone (100% экран)
+                        </div>
+                        <p class="text-slate-400">В <strong>Safari</strong> → <strong>«Поделиться» → «На экран Домой»</strong>. Приложение установится без адресной строки.</p>
+                    </div>
+                </div>
+                <button onclick="closeFullscreenHelpModal()" class="w-full py-2.5 rounded-xl bg-brand-500 text-slate-950 font-bold text-xs">Понятно, спасибо!</button>
+            </div>
+        </div>
+
+        <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-2">
+            <div id="toast-box" class="px-4 py-2.5 rounded-2xl bg-slate-800/95 border border-slate-700 text-white text-xs font-semibold shadow-2xl flex items-center gap-2">
+                <i id="toast-icon" class="fa-solid fa-circle-check text-accent-400"></i>
+                <span id="toast-message">Сохранено</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // ==========================================
+        // 0. УТИЛИТЫ
+        // ==========================================
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
+
+        // ==========================================
+        // 1. БАЗОВЫЕ УПРАЖНЕНИЯ
+        // ==========================================
+        const DEFAULT_EXERCISES = [
+            { id: 'incline_db_press', name: 'Жим гантелей на наклонной скамье (30°)', category: 'Грудь', targetReps: '10-12', defaultSets: 3, stepKg: 2, defaultWeight: 16, tip: 'Лопатки сведены, угол скамьи 30°. Вверху гантели не стучать друг о друга.', isStarterChest: true },
+            { id: 'flat_db_fly', name: 'Разведение (сведения) гантелей лежа', category: 'Грудь', targetReps: '12-15', defaultSets: 3, stepKg: 1, defaultWeight: 10, tip: 'Локти слегка согнуты и зафиксированы. Плавное растяжение грудных без боли в плечах.', isStarterChest: true },
+            { id: 'french_press', name: 'Французский жим лежа (EZ-штанга / гантели)', category: 'Трицепс', targetReps: '10-12', defaultSets: 3, stepKg: 2.5, defaultWeight: 20, tip: 'Локти держи узко и не разводи в стороны. Опускай плавно (2 сек вниз, 1 сек вверх).', isStarterChest: true },
+            { id: 'bench_press', name: 'Жим штанги лежа на горизонтальной скамье', category: 'Грудь', targetReps: '8-10', defaultSets: 3, stepKg: 2.5, defaultWeight: 50, tip: 'Упор ногами в пол, лопатки сведены и опущены к тазу.', isStarterChest: false },
+            { id: 'cable_pushdown', name: 'Разгибание рук на трицепс в кроссовере', category: 'Трицепс', targetReps: '12-15', defaultSets: 3, stepKg: 2.5, defaultWeight: 20, tip: 'Плечи прижаты к корпусу, двигаются только предплечья.', isStarterChest: false },
+            { id: 'lat_pulldown', name: 'Вертикальная тяга блока к груди', category: 'Спина', targetReps: '10-12', defaultSets: 3, stepKg: 2.5, defaultWeight: 45, tip: 'Тяни локти вниз и назад, грудь подавай навстречу рукояти.', isStarterChest: false },
+            { id: 'db_shoulder_press', name: 'Жим гантелей сидя (плечи)', category: 'Плечи', targetReps: '10-12', defaultSets: 3, stepKg: 2, defaultWeight: 14, tip: 'Спина плотно прижата к спинке скамьи, локти чуть выведены вперед.', isStarterChest: false }
+        ];
+
+        // ==========================================
+        // 2. СОСТОЯНИЕ
+        // ==========================================
+        let state = {
+            exercises: [...DEFAULT_EXERCISES],
+            workoutsHistory: [],
+            activeWorkout: [],
+            defaultRestSeconds: 90,
+            chartMetric: 'maxWeight',
+            lastTab: 'workout',
+            timer: { intervalId: null, remaining: 0, total: 90, running: false }
+        };
+
+        const LOCAL_STORAGE_KEY = 'fitreturn_backup_v1';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fit-return-chest-tracker';
+
+        // Firebase (lazy)
+        let db = null, auth = null, currentUser = null;
+        let fDoc = null, fSetDoc = null, fDeleteDoc = null, fOnSnapshot = null, fCollection = null;
+
+        // ==========================================
+        // 3. АУДИО (один контекст, разблокировка по первому тапу)
+        // ==========================================
+        let audioCtx = null;
+        function unlockAudio() {
+            try {
+                if (!audioCtx) {
+                    const Ctx = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new Ctx();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (e) {}
+        }
+        document.body.addEventListener('touchstart', unlockAudio, { once: true });
+        document.body.addEventListener('click', unlockAudio, { once: true });
+
+        function playTimerBeep() {
+            if (!audioCtx) return;
+            try {
+                const playTone = (freq, start, dur) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + start);
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime + start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + dur);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + start);
+                    osc.stop(audioCtx.currentTime + start + dur);
+                };
+                playTone(587.33, 0, 0.18);
+                playTone(880.00, 0.2, 0.35);
+            } catch (e) {}
+        }
+
+        // ==========================================
+        // 4. ЛОКАЛЬНЫЙ БЭКАП
+        // ==========================================
+        function saveLocalBackup() {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+                    workoutsHistory: state.workoutsHistory,
+                    customExercises: state.exercises.filter(e => e.id.startsWith('custom_')),
+                    activeWorkout: state.activeWorkout,
+                    defaultRestSeconds: state.defaultRestSeconds,
+                    chartMetric: state.chartMetric,
+                    lastTab: state.lastTab
+                }));
+            } catch (e) {}
+        }
+
+        function applyChartMetricUI() {
+            ['maxWeight', 'e1rm', 'volume'].forEach(m => {
+                const btn = document.getElementById('metric-btn-' + m);
+                if (!btn) return;
+                if (m === state.chartMetric) {
+                    btn.className = 'py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-slate-950 transition';
+                } else {
+                    btn.className = 'py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+                }
+            });
+        }
+
+        function loadLocalBackup() {
+            try {
+                const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (!raw) return false;
+                const parsed = JSON.parse(raw);
+                if (parsed.workoutsHistory && parsed.workoutsHistory.length > 0) {
+                    state.workoutsHistory = parsed.workoutsHistory;
+                }
+                if (parsed.customExercises && parsed.customExercises.length > 0) {
+                    const ids = new Set(state.exercises.map(e => e.id));
+                    parsed.customExercises.forEach(ce => { if (!ids.has(ce.id)) state.exercises.push(ce); });
+                }
+                if (typeof parsed.defaultRestSeconds === 'number') {
+                    state.defaultRestSeconds = parsed.defaultRestSeconds;
+                    const sel = document.getElementById('default-rest-select');
+                    if (sel) sel.value = String(parsed.defaultRestSeconds);
+                }
+                if (parsed.chartMetric) {
+                    state.chartMetric = parsed.chartMetric;
+                    applyChartMetricUI();
+                }
+                if (parsed.lastTab) state.lastTab = parsed.lastTab;
+                if (parsed.activeWorkout && parsed.activeWorkout.length > 0) {
+                    state.activeWorkout = parsed.activeWorkout;
+                    return true;
+                }
+            } catch (e) { return false; }
+            return false;
+        }
+
+        // ==========================================
+        // 5. УМНАЯ РЕКОМЕНДАЦИЯ
+        // ==========================================
+        function getSmartRecommendation(exerciseId) {
+            const exInfo = state.exercises.find(e => e.id === exerciseId) || {
+                defaultWeight: 15, stepKg: 2.5, targetReps: '10-12'
+            };
+            const targetMin = parseInt(String(exInfo.targetReps || '10').split('-')[0]) || 0;
+            const sorted = [...state.workoutsHistory].sort((a, b) => b.timestamp - a.timestamp);
+
+            for (const workout of sorted) {
+                if (!workout.exercises) continue;
+                const foundEx = workout.exercises.find(e => e.exerciseId === exerciseId);
+                if (foundEx && foundEx.sets && foundEx.sets.length > 0) {
+                    const completedSets = foundEx.sets.filter(s => s.done);
+                    const referenceSets = completedSets.length > 0 ? completedSets : foundEx.sets;
+                    const lastWeight = Math.max(...referenceSets.map(s => Number(s.weight) || 0));
+                    const lastReps = referenceSets[0]?.reps || 10;
+                    const difficulty = foundEx.difficulty || 'normal';
+                    const step = Number(exInfo.stepKg) || 2.5;
+                    const allRepsMeetTarget = referenceSets.every(s => Number(s.reps) >= targetMin);
+
+                    // Подряд идущие «Тяжело»
+                    let consecutiveHard = 0;
+                    for (const w of sorted) {
+                        const f = (w.exercises || []).find(e => e.exerciseId === exerciseId);
+                        if (f && f.sets && f.sets.length > 0) {
+                            if (f.difficulty === 'hard') consecutiveHard++;
+                            else break;
+                        }
+                    }
+
+                    let recWeight = lastWeight;
+                    let badgeText = '';
+                    let badgeColor = '';
+                    let explanation = '';
+
+                    if (difficulty === 'hard' && consecutiveHard >= 2) {
+                        recWeight = +(lastWeight * 0.9).toFixed(1);
+                        badgeText = `↓ 10% (Делоад)`;
+                        badgeColor = 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+                        explanation = `Два раза подряд «Тяжело». Снижаем вес до ${recWeight} кг для восстановления, затем снова вверх.`;
+                    } else if (difficulty === 'easy' && allRepsMeetTarget) {
+                        recWeight = +(lastWeight + step).toFixed(1);
+                        badgeText = `+${step} кг (Было легко)`;
+                        badgeColor = 'bg-accent-500/20 text-accent-300 border-accent-500/30';
+                        explanation = `В прошлый раз «Легко» с ${lastWeight} кг и повторы выполнены. Повышаем до ${recWeight} кг!`;
+                    } else if (difficulty === 'normal' && allRepsMeetTarget) {
+                        recWeight = +(lastWeight + step).toFixed(1);
+                        badgeText = `+${step} кг (Прогрессия)`;
+                        badgeColor = 'bg-brand-500/20 text-brand-300 border-brand-500/30';
+                        explanation = `Прошлая тренировка: ${lastWeight} кг («Нормально»), повторы выполнены. Время добавить +${step} кг!`;
+                    } else if (difficulty === 'hard') {
+                        recWeight = lastWeight;
+                        badgeText = `Закрепляем ${lastWeight} кг`;
+                        badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                        explanation = `Было «Тяжело». Оставляем ${lastWeight} кг, работаем над техникой и повторениями.`;
+                    } else {
+                        recWeight = lastWeight;
+                        badgeText = `Закрепляем ${lastWeight} кг`;
+                        badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                        explanation = `Не все подходы достигли цели ${targetMin}+ повторений. Вес ${lastWeight} кг пока не повышаем.`;
+                    }
+
+                    return {
+                        hasHistory: true, lastDate: workout.dateFormatted, lastWeight, lastReps,
+                        lastDifficulty: difficulty, recommendedWeight: recWeight,
+                        recommendedReps: lastReps, badgeText, badgeColor, explanation
+                    };
+                }
+            }
+
+            return {
+                hasHistory: false,
+                recommendedWeight: exInfo.defaultWeight || 15,
+                recommendedReps: 10,
+                badgeText: 'Первая тренировка',
+                badgeColor: 'bg-slate-800 text-slate-300 border-slate-700',
+                explanation: `Стартовый вес для возвращения: ${exInfo.defaultWeight || 15} кг на ${exInfo.targetReps} повт.`
+            };
+        }
+
+        // ==========================================
+        // 6. МОДАЛКИ-ПОМОЩНИКИ
+        // ==========================================
+        window.toggleIntroCard = function() {
+            const card = document.getElementById('workout-intro-card');
+            if (card) card.classList.add('hidden');
+        };
+
+        window.openFullscreenHelpModal = function() {
+            document.getElementById('modal-fullscreen-help').classList.remove('hidden');
+        };
+        window.closeFullscreenHelpModal = function() {
+            document.getElementById('modal-fullscreen-help').classList.add('hidden');
+        };
+
+        // ==========================================
+        // 7. ТРЕНИРОВКА — РЕНДЕР
+        // ==========================================
+        function createActiveExerciseEntry(exerciseId) {
+            const exInfo = state.exercises.find(e => e.id === exerciseId);
+            const rec = getSmartRecommendation(exerciseId);
+            const setsCount = exInfo?.defaultSets || 3;
+            const sets = [];
+            for (let i = 1; i <= setsCount; i++) {
+                sets.push({ setNumber: i, weight: rec.recommendedWeight, reps: rec.recommendedReps || 10, done: false });
+            }
+            return {
+                instanceId: 'ex_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                exerciseId, name: exInfo ? exInfo.name : 'Упражнение',
+                category: exInfo ? exInfo.category : 'Общее',
+                targetReps: exInfo ? exInfo.targetReps : '10-12',
+                tip: exInfo ? exInfo.tip : '',
+                sets, difficulty: 'normal'
+            };
+        }
+
+        window.loadDefaultChestWorkout = function() {
+            state.activeWorkout = ['incline_db_press', 'flat_db_fly', 'french_press'].map(createActiveExerciseEntry);
+            saveLocalBackup();
+            renderActiveWorkout();
+            showToast('Комплекс на грудь и трицепс загружен!');
+        };
+
+        function renderActiveWorkout() {
+            const container = document.getElementById('active-exercises-list');
+            const finishBtn = document.getElementById('finish-workout-btn');
+
+            if (state.activeWorkout.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center mx-auto text-xl">
+                            <i class="fa-solid fa-dumbbell"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm text-white">Тренировка пока пуста</h3>
+                            <p class="text-xs text-slate-400 mt-1">Нажми «Загрузить комплекс» выше или добавь упражнение из базы.</p>
+                        </div>
+                    </div>`;
+                finishBtn.classList.add('hidden');
+                return;
+            }
+            finishBtn.classList.remove('hidden');
+
+            container.innerHTML = state.activeWorkout.map((ex, exIdx) => {
+                const rec = getSmartRecommendation(ex.exerciseId);
+                const safeName = escapeHtml(ex.name);
+                const safeCat = escapeHtml(ex.category);
+                const safeTip = escapeHtml(ex.tip || '');
+
+                const setsHtml = ex.sets.map((s, setIdx) => `
+                    <div class="grid grid-cols-12 gap-1.5 items-center py-2 px-2 rounded-xl transition ${s.done ? 'bg-accent-500/10 border border-accent-500/30' : 'bg-slate-950/70 border border-slate-800/80'}">
+                        <div class="col-span-2 flex items-center gap-1">
+                            <span class="w-6 h-6 rounded-lg ${s.done ? 'bg-accent-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 font-semibold'} text-xs flex items-center justify-center">${setIdx + 1}</span>
+                        </div>
+                        <div class="col-span-4 flex items-center bg-slate-900 rounded-lg border border-slate-700/80 overflow-hidden">
+                            <button onclick="stepSetValue(${exIdx}, ${setIdx}, 'weight', -1)" aria-label="Уменьшить вес" class="px-2 py-1.5 text-slate-400 hover:text-white active:bg-slate-800 text-xs font-bold">-</button>
+                            <input type="text" inputmode="decimal" value="${s.weight}" oninput="updateSetInput(${exIdx}, ${setIdx}, 'weight', this.value)" class="w-full bg-transparent text-center font-bold text-xs text-white focus:outline-none">
+                            <button onclick="stepSetValue(${exIdx}, ${setIdx}, 'weight', 1)" aria-label="Увеличить вес" class="px-2 py-1.5 text-slate-400 hover:text-white active:bg-slate-800 text-xs font-bold">+</button>
+                        </div>
+                        <div class="col-span-4 flex items-center bg-slate-900 rounded-lg border border-slate-700/80 overflow-hidden">
+                            <button onclick="stepSetValue(${exIdx}, ${setIdx}, 'reps', -1)" aria-label="Уменьшить повторения" class="px-2 py-1.5 text-slate-400 hover:text-white active:bg-slate-800 text-xs font-bold">-</button>
+                            <input type="text" inputmode="numeric" value="${s.reps}" oninput="updateSetInput(${exIdx}, ${setIdx}, 'reps', this.value)" class="w-full bg-transparent text-center font-bold text-xs text-white focus:outline-none">
+                            <button onclick="stepSetValue(${exIdx}, ${setIdx}, 'reps', 1)" aria-label="Увеличить повторения" class="px-2 py-1.5 text-slate-400 hover:text-white active:bg-slate-800 text-xs font-bold">+</button>
+                        </div>
+                        <div class="col-span-2 flex items-center justify-end gap-1">
+                            <button onclick="toggleSetDone(${exIdx}, ${setIdx})" aria-label="Отметить подход" class="w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-90 ${s.done ? 'bg-accent-500 text-slate-950 shadow-md shadow-accent-500/20' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}">
+                                <i class="fa-solid fa-check text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-lg">
+                        <div class="p-3.5 border-b border-slate-800/80 flex items-start justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="px-2 py-0.5 rounded-md bg-slate-800 text-brand-400 font-semibold text-[10px] uppercase tracking-wider">${safeCat}</span>
+                                    <span class="px-2 py-0.5 rounded-md border text-[10px] font-bold ${rec.badgeColor}">
+                                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>${rec.badgeText}
+                                    </span>
+                                </div>
+                                <h3 class="font-bold text-sm text-white mt-1.5 leading-snug">${safeName}</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Цель: <strong class="text-slate-200">${escapeHtml(ex.targetReps)} повт.</strong></p>
+                            </div>
+                            <button onclick="removeExerciseFromWorkout(${exIdx})" aria-label="Удалить упражнение" class="w-7 h-7 rounded-lg bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition">
+                                <i class="fa-regular fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                        ${safeTip ? `<div class="px-3.5 py-1.5 text-[11px] text-slate-400 italic border-b border-slate-800/60 bg-slate-950/30"><i class="fa-solid fa-circle-info text-slate-500 mr-1"></i>${safeTip}</div>` : ''}
+                        <div class="px-3.5 py-2 bg-slate-950/60 border-b border-slate-800/60 flex items-center gap-2 text-[11px] text-slate-300">
+                            <i class="fa-solid fa-lightbulb text-amber-400 shrink-0"></i>
+                            <span>${escapeHtml(rec.explanation)}</span>
+                        </div>
+                        <div class="p-3 space-y-2">
+                            <div class="grid grid-cols-12 gap-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                <div class="col-span-2">Сет</div>
+                                <div class="col-span-4 text-center">Вес (кг)</div>
+                                <div class="col-span-4 text-center">Повт.</div>
+                                <div class="col-span-2 text-right">Готово</div>
+                            </div>
+                            <div class="space-y-1.5">${setsHtml}</div>
+                            <div class="flex items-center justify-between pt-1.5">
+                                <button onclick="addSetToExercise(${exIdx})" class="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition active:scale-95">
+                                    <i class="fa-solid fa-plus text-brand-400 text-[10px]"></i> Добавить подход
+                                </button>
+                                ${ex.sets.length > 1 ? `<button onclick="removeLastSet(${exIdx})" class="py-1.5 px-2.5 rounded-xl text-slate-400 hover:text-rose-400 text-xs transition">- Убрать сет</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="p-3.5 bg-slate-950/80 border-t border-slate-800/80">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[11px] font-bold text-slate-300">Как ощущался вес? (влияет на след. тренировку)</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="setExerciseDifficulty(${exIdx}, 'easy')" class="py-2 px-2 rounded-xl font-bold text-xs border flex flex-col items-center gap-0.5 transition active:scale-95 ${ex.difficulty === 'easy' ? 'bg-accent-500/20 border-accent-500 text-accent-300 shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400'}">
+                                    <span>😎 Легко</span><span class="text-[9px] font-normal opacity-80">Повысим вес</span>
+                                </button>
+                                <button onclick="setExerciseDifficulty(${exIdx}, 'normal')" class="py-2 px-2 rounded-xl font-bold text-xs border flex flex-col items-center gap-0.5 transition active:scale-95 ${ex.difficulty === 'normal' ? 'bg-brand-500/20 border-brand-500 text-brand-300 shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400'}">
+                                    <span>💪 Нормально</span><span class="text-[9px] font-normal opacity-80">Плановый +вес</span>
+                                </button>
+                                <button onclick="setExerciseDifficulty(${exIdx}, 'hard')" class="py-2 px-2 rounded-xl font-bold text-xs border flex flex-col items-center gap-0.5 transition active:scale-95 ${ex.difficulty === 'hard' ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-400'}">
+                                    <span>🥵 Тяжело</span><span class="text-[9px] font-normal opacity-80">Оставим вес</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // 8. ОБРАБОТЧИКИ ТРЕНИРОВКИ
+        // ==========================================
+        window.stepSetValue = function(exIdx, setIdx, field, delta) {
+            const set = state.activeWorkout[exIdx].sets[setIdx];
+            if (field === 'weight') {
+                const exInfo = state.exercises.find(e => e.id === state.activeWorkout[exIdx].exerciseId);
+                const step = exInfo?.stepKg ? Math.min(exInfo.stepKg, 2.5) : 1;
+                set.weight = Math.max(0, +(Number(set.weight) + delta * step).toFixed(1));
+            } else {
+                set.reps = Math.max(1, Number(set.reps) + delta);
+            }
+            saveLocalBackup();
+            renderActiveWorkout();
+        };
+
+        window.updateSetInput = function(exIdx, setIdx, field, val) {
+            const num = Math.max(0, Number(val) || 0);
+            state.activeWorkout[exIdx].sets[setIdx][field] = num;
+            saveLocalBackup();
+            // НЕ перерисовываем — сохраняем фокус в поле
+        };
+
+        window.toggleSetDone = function(exIdx, setIdx) {
+            const set = state.activeWorkout[exIdx].sets[setIdx];
+            const wasDone = set.done;
+            set.done = !set.done;
+            saveLocalBackup();
+            renderActiveWorkout();
+            // Авто-таймер — только при переходе false→true
+            if (!wasDone && set.done && state.defaultRestSeconds > 0) {
+                startRestTimer(state.defaultRestSeconds);
+            }
+        };
+
+        window.addSetToExercise = function(exIdx) {
+            const sets = state.activeWorkout[exIdx].sets;
+            const last = sets[sets.length - 1] || { weight: 15, reps: 10 };
+            sets.push({ setNumber: sets.length + 1, weight: last.weight, reps: last.reps, done: false });
+            saveLocalBackup();
+            renderActiveWorkout();
+        };
+
+        window.removeLastSet = function(exIdx) {
+            const sets = state.activeWorkout[exIdx].sets;
+            if (sets.length > 1) {
+                sets.pop();
+                saveLocalBackup();
+                renderActiveWorkout();
+            }
+        };
+
+        window.removeExerciseFromWorkout = function(exIdx) {
+            state.activeWorkout.splice(exIdx, 1);
+            saveLocalBackup();
+            renderActiveWorkout();
+        };
+
+        window.setExerciseDifficulty = function(exIdx, level) {
+            state.activeWorkout[exIdx].difficulty = level;
+            saveLocalBackup();
+            renderActiveWorkout();
+        };
+
+        window.updateDefaultRest = function(seconds) {
+            state.defaultRestSeconds = Number(seconds);
+            saveLocalBackup();
+            showToast(seconds > 0 ? `Авто-таймер: ${seconds} сек` : 'Авто-таймер выключен');
+        };
+
+        // ==========================================
+        // 9. ТАЙМЕР
+        // ==========================================
+        window.startRestTimer = function(seconds) {
+            unlockAudio();
+            if (state.timer.intervalId) clearInterval(state.timer.intervalId);
+            state.timer.total = seconds;
+            state.timer.remaining = seconds;
+            state.timer.running = true;
+            updateTimerUI();
+            document.getElementById('floating-timer').classList.remove('hidden');
+
+            state.timer.intervalId = setInterval(() => {
+                state.timer.remaining -= 1;
+                updateTimerUI();
+                if (state.timer.remaining <= 0) {
+                    clearInterval(state.timer.intervalId);
+                    state.timer.running = false;
+                    playTimerBeep();
+                    showToast('⏰ Отдых завершен! Пора делать подход.');
+                    document.getElementById('floating-timer').classList.add('hidden');
+                }
+            }, 1000);
+        };
+
+        window.adjustTimer = function(deltaSeconds) {
+            if (!state.timer.running) return;
+            state.timer.remaining = Math.max(5, state.timer.remaining + deltaSeconds);
+            state.timer.total = Math.max(state.timer.total + deltaSeconds, state.timer.remaining);
+            updateTimerUI();
+        };
+
+        window.stopTimer = function() {
+            if (state.timer.intervalId) clearInterval(state.timer.intervalId);
+            state.timer.running = false;
+            state.timer.remaining = 0;
+            document.getElementById('floating-timer').classList.add('hidden');
+            document.getElementById('header-timer-text').textContent = 'Таймер';
+        };
+
+        function updateTimerUI() {
+            const rem = Math.max(0, state.timer.remaining);
+            const m = String(Math.floor(rem / 60)).padStart(2, '0');
+            const s = String(rem % 60).padStart(2, '0');
+            const formatted = `${m}:${s}`;
+            document.getElementById('floating-timer-countdown').textContent = formatted;
+            document.getElementById('modal-timer-display').textContent = formatted;
+            document.getElementById('header-timer-text').textContent = state.timer.running ? formatted : 'Таймер';
+            const pct = state.timer.total > 0 ? Math.min(100, (rem / state.timer.total) * 100) : 0;
+            document.getElementById('floating-timer-bar').style.width = `${pct}%`;
+        }
+
+        window.openTimerModal = function() {
+            if (!state.timer.running) {
+                state.timer.remaining = state.timer.total;
+                updateTimerUI();
+            }
+            document.getElementById('modal-timer').classList.remove('hidden');
+        };
+        window.closeTimerModal = function() {
+            document.getElementById('modal-timer').classList.add('hidden');
+        };
+
+        // ==========================================
+        // 10. СОХРАНЕНИЕ ТРЕНИРОВКИ
+        // ==========================================
+        window.finishWorkout = async function() {
+            if (state.activeWorkout.length === 0) return;
+
+            const hasAnyDone = state.activeWorkout.some(ex => ex.sets.some(s => s.done));
+            if (!hasAnyDone) {
+                showToast('⚠️ Отметьте хотя бы один выполненный подход');
+                return;
+            }
+
+            const now = new Date();
+            const dateFormatted = now.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const workoutId = 'workout_' + Date.now();
+            let totalVolume = 0, totalSetsCount = 0;
+
+            const cleanedExercises = state.activeWorkout.map(ex => {
+                const sets = ex.sets.map(s => {
+                    const w = Number(s.weight) || 0, r = Number(s.reps) || 0;
+                    totalVolume += w * r; totalSetsCount += 1;
+                    return { weight: w, reps: r, done: true };
+                });
+                return {
+                    exerciseId: ex.exerciseId, name: ex.name, category: ex.category,
+                    difficulty: ex.difficulty || 'normal', sets
+                };
+            });
+
+            const workoutRecord = {
+                id: workoutId, timestamp: Date.now(), dateFormatted,
+                totalVolume: Math.round(totalVolume), totalSets: totalSetsCount,
+                exercises: cleanedExercises
+            };
+
+            state.workoutsHistory.unshift(workoutRecord);
+            stopTimer();
+
+            // Обновляем веса на следующую сессию по новой рекомендации
+            state.activeWorkout.forEach(ex => {
+                const rec = getSmartRecommendation(ex.exerciseId);
+                ex.sets.forEach(s => { s.weight = rec.recommendedWeight; s.done = false; });
+            });
+            saveLocalBackup();
+
+            if (currentUser && db && fDoc && fSetDoc) {
+                try {
+                    await fSetDoc(fDoc(db, 'artifacts', appId, 'users', currentUser.uid, 'workouts', workoutId), workoutRecord);
+                } catch (e) { console.error('Ошибка сохранения:', e); }
+            }
+
+            renderActiveWorkout();
+            renderHistory();
+            renderAnalytics();
+            showToast('🎉 Тренировка сохранена! Веса обновлены.');
+            switchTab('history');
+        };
+
+        window.deleteWorkoutRecord = async function(workoutId) {
+            state.workoutsHistory = state.workoutsHistory.filter(w => w.id !== workoutId);
+            saveLocalBackup();
+            renderHistory();
+            renderAnalytics();
+            renderActiveWorkout();
+            if (currentUser && db && fDoc && fDeleteDoc) {
+                try {
+                    await fDeleteDoc(fDoc(db, 'artifacts', appId, 'users', currentUser.uid, 'workouts', workoutId));
+                } catch (e) { console.error('Ошибка удаления:', e); }
+            }
+            showToast('Запись удалена из истории');
+        };
+
+        function renderHistory() {
+            const container = document.getElementById('history-list-container');
+            const badge = document.getElementById('history-count-badge');
+            const sorted = [...state.workoutsHistory].sort((a, b) => b.timestamp - a.timestamp);
+            badge.textContent = `${sorted.length} тр.`;
+
+            if (sorted.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
+                        <i class="fa-solid fa-clock-rotate-left text-2xl text-slate-500"></i>
+                        <h3 class="font-bold text-sm text-white">История пока пуста</h3>
+                        <p class="text-xs text-slate-400">Заверши первую тренировку — она появится здесь вместе с прогнозом весов.</p>
+                    </div>`;
+                return;
+            }
+
+            const diffLabels = {
+                easy: { text: '😎 Легко (вес +)', cls: 'bg-accent-500/15 text-accent-300 border-accent-500/30' },
+                normal: { text: '💪 Нормально (вес +)', cls: 'bg-brand-500/15 text-brand-300 border-brand-500/30' },
+                hard: { text: '🥵 Тяжело (вес =)', cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' }
+            };
+
+            container.innerHTML = sorted.map(w => {
+                const exRows = (w.exercises || []).map(ex => {
+                    const diff = diffLabels[ex.difficulty || 'normal'];
+                    const setsBadges = (ex.sets || []).map(s =>
+                        `<span class="inline-block px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-[11px] font-semibold text-slate-200">${s.weight} кг × ${s.reps}</span>`
+                    ).join('');
+                    return `
+                        <div class="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/70 space-y-1.5">
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="font-bold text-xs text-white leading-snug">${escapeHtml(ex.name)}</span>
+                                <span class="shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold border ${diff.cls}">${diff.text}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">${setsBadges}</div>
+                        </div>`;
+                }).join('');
+
+                return `
+                    <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3.5 space-y-3 shadow-md">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                            <div>
+                                <div class="text-xs font-bold text-white flex items-center gap-2">
+                                    <i class="fa-regular fa-calendar-check text-brand-400"></i>
+                                    ${escapeHtml(w.dateFormatted)}
+                                </div>
+                                <div class="text-[11px] text-slate-400 mt-0.5">
+                                    Подходов: <strong class="text-slate-200">${w.totalSets || 0}</strong> • Тоннаж: <strong class="text-slate-200">${w.totalVolume || 0} кг</strong>
+                                </div>
+                            </div>
+                            <button onclick="deleteWorkoutRecord('${w.id}')" aria-label="Удалить запись" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition">
+                                <i class="fa-regular fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-2">${exRows}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        // ==========================================
+        // 11. АНАЛИТИКА / ГРАФИКИ
+        // ==========================================
+        window.setChartMetric = function(metric) {
+            state.chartMetric = metric;
+            saveLocalBackup();
+            applyChartMetricUI();
+            renderAnalytics();
+        };
+
+        function populateAnalyticsSelector() {
+            const select = document.getElementById('analytics-exercise-select');
+            const currentVal = select.value;
+            select.innerHTML = state.exercises.map(ex =>
+                `<option value="${escapeHtml(ex.id)}">${escapeHtml(ex.name)}</option>`
+            ).join('');
+            if (currentVal && state.exercises.some(e => e.id === currentVal)) select.value = currentVal;
+        }
+
+        window.renderAnalytics = function() {
+            const select = document.getElementById('analytics-exercise-select');
+            if (!select.value && state.exercises.length > 0) populateAnalyticsSelector();
+            const exId = select.value || 'incline_db_press';
+            const exInfo = state.exercises.find(e => e.id === exId) || state.exercises[0];
+
+            const chronological = [...state.workoutsHistory].sort((a, b) => a.timestamp - b.timestamp);
+            const dataPoints = [];
+
+            chronological.forEach(w => {
+                const found = (w.exercises || []).find(e => e.exerciseId === exId);
+                if (found && found.sets && found.sets.length > 0) {
+                    let maxW = 0, best1RM = 0, vol = 0;
+                    found.sets.forEach(s => {
+                        const weight = Number(s.weight) || 0, reps = Number(s.reps) || 0;
+                        if (weight > maxW) maxW = weight;
+                        const e1rm = +(weight * (1 + reps / 30)).toFixed(1);
+                        if (e1rm > best1RM) best1RM = e1rm;
+                        vol += weight * reps;
+                    });
+                    dataPoints.push({
+                        date: w.dateFormatted.split(',')[0],
+                        maxWeight: maxW, e1rm: best1RM, volume: Math.round(vol)
+                    });
+                }
+            });
+
+            const chartBox = document.getElementById('svg-chart-container');
+            const currentValEl = document.getElementById('chart-current-value');
+            const trendBadge = document.getElementById('chart-trend-badge');
+            const recBox = document.getElementById('analytics-next-recommendation');
+            const statsCards = document.getElementById('analytics-stats-cards');
+            const rec = getSmartRecommendation(exId);
+
+            recBox.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-trend-up text-sm"></i>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">План на следующую тренировку:</div>
+                        <div class="text-xs font-bold text-white">Рабочий вес: <span class="text-brand-400">${rec.recommendedWeight} кг</span> (${escapeHtml(exInfo.targetReps)} повт.)</div>
+                    </div>
+                </div>`;
+
+            if (dataPoints.length === 0) {
+                currentValEl.textContent = 'Нет записей';
+                trendBadge.textContent = 'Ждем 1-ю тренировку';
+                chartBox.innerHTML = `
+                    <div class="text-center px-4">
+                        <i class="fa-solid fa-chart-line text-slate-600 text-2xl mb-2"></i>
+                        <p class="text-xs text-slate-400">Сохрани хотя бы одну тренировку с этим упражнением, чтобы увидеть график.</p>
+                    </div>`;
+                statsCards.innerHTML = '';
+                return;
+            }
+
+            const metric = state.chartMetric;
+            const unit = metric === 'volume' ? 'кг (объем)' : 'кг';
+            const values = dataPoints.map(d => d[metric]);
+            const lastVal = values[values.length - 1];
+            const firstVal = values[0];
+            const diff = +(lastVal - firstVal).toFixed(1);
+
+            currentValEl.textContent = `${lastVal} ${unit}`;
+            if (diff > 0) {
+                trendBadge.textContent = `+${diff} кг с начала`;
+                trendBadge.className = 'px-2.5 py-1 rounded-xl text-xs font-bold bg-accent-500/15 text-accent-400 border border-accent-500/20';
+            } else {
+                trendBadge.textContent = `Стабильно (${lastVal} кг)`;
+                trendBadge.className = 'px-2.5 py-1 rounded-xl text-xs font-bold bg-brand-500/15 text-brand-400 border border-brand-500/20';
+            }
+
+            const width = 340, height = 180;
+            const padLeft = 36, padRight = 20, padTop = 24, padBottom = 30;
+            const minVal = Math.min(...values), maxVal = Math.max(...values);
+            const yMin = minVal === maxVal ? Math.max(0, minVal - 5) : Math.max(0, Math.floor(minVal * 0.9));
+            const yMax = minVal === maxVal ? maxVal + 5 : Math.ceil(maxVal * 1.08);
+
+            const getX = i => dataPoints.length === 1 ? width / 2 : padLeft + (i / (dataPoints.length - 1)) * (width - padLeft - padRight);
+            const getY = v => padTop + (1 - (v - yMin) / (yMax - yMin || 1)) * (height - padTop - padBottom);
+
+            const points = dataPoints.map((d, i) => ({ x: getX(i), y: getY(d[metric]), val: d[metric], date: d.date }));
+            const polyline = points.map(p => `${p.x},${p.y}`).join(' ');
+            const area = `${points[0].x},${height - padBottom} ${polyline} ${points[points.length - 1].x},${height - padBottom}`;
+
+            const circles = points.map(p => `
+                <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#0ea5e9" stroke="#090d16" stroke-width="2" />
+                <text x="${p.x}" y="${p.y - 9}" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="bold">${p.val}</text>
+                <text x="${p.x}" y="${height - 10}" text-anchor="middle" fill="#64748b" font-size="9">${escapeHtml(p.date)}</text>
+            `).join('');
+
+            chartBox.innerHTML = `
+                <svg viewBox="0 0 ${width} ${height}" class="w-full h-full overflow-visible">
+                    <defs>
+                        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.35"/>
+                            <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.0"/>
+                        </linearGradient>
+                    </defs>
+                    <line x1="${padLeft}" y1="${padTop}" x2="${width - padRight}" y2="${padTop}" stroke="#1e293b" stroke-dasharray="3 3" />
+                    <line x1="${padLeft}" y1="${height / 2}" x2="${width - padRight}" y2="${height / 2}" stroke="#1e293b" stroke-dasharray="3 3" />
+                    <line x1="${padLeft}" y1="${height - padBottom}" x2="${width - padRight}" y2="${height - padBottom}" stroke="#334155" />
+                    <text x="6" y="${padTop + 4}" fill="#64748b" font-size="9">${yMax}</text>
+                    <text x="6" y="${height - padBottom}" fill="#64748b" font-size="9">${yMin}</text>
+                    ${points.length > 1 ? `<polygon points="${area}" fill="url(#chartGrad)" />` : ''}
+                    ${points.length > 1 ? `<polyline fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${polyline}" />` : ''}
+                    ${circles}
+                </svg>`;
+
+            const allMaxWeight = Math.max(...dataPoints.map(d => d.maxWeight));
+            const allBest1RM = Math.max(...dataPoints.map(d => d.e1rm));
+            statsCards.innerHTML = `
+                <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                    <div class="text-[11px] text-slate-400">Личный рекорд веса</div>
+                    <div class="text-lg font-extrabold text-white mt-0.5">${allMaxWeight} кг</div>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                    <div class="text-[11px] text-slate-400">Расчетный 1ПМ</div>
+                    <div class="text-lg font-extrabold text-accent-400 mt-0.5">${allBest1RM} кг</div>
+                </div>`;
+        };
+
+        // ==========================================
+        // 12. БАЗА УПРАЖНЕНИЙ
+        // ==========================================
+        function renderExercisesCatalog() {
+            const container = document.getElementById('exercises-catalog-list');
+            container.innerHTML = state.exercises.map(ex => `
+                <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 text-brand-400 font-bold text-[10px]">${escapeHtml(ex.category)}</span>
+                            <span class="text-[11px] text-slate-400">Шаг: <strong class="text-slate-200">+${ex.stepKg} кг</strong></span>
+                        </div>
+                        <h4 class="font-bold text-xs text-white mt-1">${escapeHtml(ex.name)}</h4>
+                        <p class="text-[11px] text-slate-400">Старт: ${ex.defaultWeight} кг • Повт: ${escapeHtml(ex.targetReps)}</p>
+                    </div>
+                    <button onclick="addExerciseToActiveWorkout('${escapeHtml(ex.id)}')" class="shrink-0 px-3 py-2 rounded-xl bg-slate-800 hover:bg-brand-500 hover:text-slate-950 text-slate-200 font-bold text-xs transition">
+                        + В тренировку
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        window.createNewCustomExercise = async function() {
+            const nameInput = document.getElementById('new-ex-name');
+            const name = nameInput.value.trim();
+            if (!name) { showToast('Введи название упражнения'); return; }
+
+            const category = document.getElementById('new-ex-category').value;
+            const stepKg = Number(document.getElementById('new-ex-step').value) || 2.5;
+            const defaultWeight = Number(document.getElementById('new-ex-weight').value) || 15;
+            const targetReps = document.getElementById('new-ex-reps').value.trim() || '10-12';
+
+            const newEx = {
+                id: 'custom_' + Date.now(), name, category, stepKg, defaultWeight,
+                targetReps, defaultSets: 3,
+                tip: 'Следи за плавной техникой и контролем негативной фазы.'
+            };
+
+            state.exercises.push(newEx);
+            nameInput.value = '';
+            saveLocalBackup();
+            renderExercisesCatalog();
+            populateAnalyticsSelector();
+
+            if (currentUser && db && fDoc && fSetDoc) {
+                try {
+                    await fSetDoc(fDoc(db, 'artifacts', appId, 'users', currentUser.uid, 'custom_exercises', newEx.id), newEx);
+                } catch (e) { console.error('Ошибка сохранения упражнения:', e); }
+            }
+            showToast('Упражнение добавлено в базу!');
+        };
+
+        window.openExercisePicker = function() {
+            const list = document.getElementById('picker-exercises-list');
+            list.innerHTML = state.exercises.map(ex => {
+                const rec = getSmartRecommendation(ex.id);
+                return `
+                    <div onclick="addExerciseToActiveWorkout('${escapeHtml(ex.id)}'); closeExercisePicker();"
+                        class="p-3 rounded-2xl bg-slate-950/90 hover:bg-slate-800 border border-slate-800 flex items-center justify-between cursor-pointer transition active:scale-98">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-brand-400">${escapeHtml(ex.category)}</span>
+                            <h4 class="font-bold text-xs text-white mt-0.5">${escapeHtml(ex.name)}</h4>
+                            <span class="text-[11px] text-slate-400">Рекомендуемый вес: <strong class="text-accent-400">${rec.recommendedWeight} кг</strong></span>
+                        </div>
+                        <div class="w-8 h-8 rounded-xl bg-brand-500/15 text-brand-400 flex items-center justify-center">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </div>
+                    </div>`;
+            }).join('');
+            document.getElementById('modal-exercise-picker').classList.remove('hidden');
+        };
+
+        window.closeExercisePicker = function() {
+            document.getElementById('modal-exercise-picker').classList.add('hidden');
+        };
+
+        window.addExerciseToActiveWorkout = function(exerciseId) {
+            state.activeWorkout.push(createActiveExerciseEntry(exerciseId));
+            saveLocalBackup();
+            renderActiveWorkout();
+            showToast('Упражнение добавлено в тренировку');
+            switchTab('workout');
+        };
+
+        // ==========================================
+        // 13. НАВИГАЦИЯ И TOAST
+        // ==========================================
+        window.switchTab = function(tabName) {
+            ['workout', 'history', 'analytics', 'exercises'].forEach(t => {
+                const sec = document.getElementById('tab-' + t);
+                const btn = document.getElementById('nav-btn-' + t);
+                if (t === tabName) {
+                    sec.classList.remove('hidden');
+                    btn.className = 'flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-brand-400 font-semibold transition';
+                } else {
+                    sec.classList.add('hidden');
+                    btn.className = 'flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-slate-400 hover:text-slate-200 font-medium transition';
+                }
+            });
+            state.lastTab = tabName;
+            saveLocalBackup();
+
+            const scrollArea = document.getElementById('main-scroll-area');
+            if (scrollArea) scrollArea.scrollTop = 0;
+
+            if (tabName === 'history') renderHistory();
+            if (tabName === 'analytics') { populateAnalyticsSelector(); renderAnalytics(); }
+            if (tabName === 'exercises') renderExercisesCatalog();
+        };
+
+        let toastTimeout = null;
+        function showToast(message) {
+            const c = document.getElementById('toast-container');
+            document.getElementById('toast-message').textContent = message;
+            c.classList.remove('opacity-0', '-translate-y-2');
+            c.classList.add('opacity-100', 'translate-y-0');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                c.classList.add('opacity-0', '-translate-y-2');
+                c.classList.remove('opacity-100', 'translate-y-0');
+            }, 2600);
+        }
+
+        // ==========================================
+        // 14. FIREBASE (LAZY)
+        // ==========================================
+        async function initFirebase() {
+            try {
+                if (typeof __firebase_config === 'undefined' || !__firebase_config) return;
+
+                const appMod = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                const authMod = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                const fsMod = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                fDoc = fsMod.doc; fSetDoc = fsMod.setDoc; fDeleteDoc = fsMod.deleteDoc;
+                fOnSnapshot = fsMod.onSnapshot; fCollection = fsMod.collection;
+
+                const app = appMod.initializeApp(JSON.parse(__firebase_config));
+                auth = authMod.getAuth(app);
+                db = fsMod.getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await authMod.signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await authMod.signInAnonymously(auth);
+                }
+
+                authMod.onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (!user) return;
+                    const badge = document.getElementById('sync-badge');
+                    badge.innerHTML = '<i class="fa-solid fa-cloud-check text-accent-400 mr-1"></i> сохранено';
+
+                    const workoutsCol = fCollection(db, 'artifacts', appId, 'users', user.uid, 'workouts');
+                    fOnSnapshot(workoutsCol, (snap) => {
+                        const loaded = [];
+                        snap.forEach(d => loaded.push(d.data()));
+                        if (loaded.length > 0) {
+                            // MERGE, чтобы не потерять офлайн-записи
+                            const map = new Map(state.workoutsHistory.map(w => [w.id, w]));
+                            loaded.forEach(w => map.set(w.id, w));
+                            state.workoutsHistory = [...map.values()].sort((a, b) => b.timestamp - a.timestamp);
+                            saveLocalBackup();
+                        }
+                        const anyDone = state.activeWorkout.some(ex => ex.sets.some(s => s.done));
+                        if (!anyDone && state.activeWorkout.length > 0) {
+                            state.activeWorkout.forEach(ex => {
+                                const rec = getSmartRecommendation(ex.exerciseId);
+                                ex.sets.forEach(s => { s.weight = rec.recommendedWeight; });
+                            });
+                        }
+                        renderActiveWorkout();
+                        renderHistory();
+                        renderAnalytics();
+                    }, (err) => console.error('Ошибка чтения тренировок:', err));
+
+                    const customExCol = fCollection(db, 'artifacts', appId, 'users', user.uid, 'custom_exercises');
+                    fOnSnapshot(customExCol, (snap) => {
+                        const customList = [];
+                        snap.forEach(d => customList.push(d.data()));
+                        if (customList.length > 0) {
+                            state.exercises = [...DEFAULT_EXERCISES, ...customList];
+                            saveLocalBackup();
+                        }
+                        renderExercisesCatalog();
+                        populateAnalyticsSelector();
+                    }, (err) => console.error('Ошибка чтения упражнений:', err));
+                });
+            } catch (e) {
+                console.warn('Firebase недоступен, работаем офлайн:', e);
+                const badge = document.getElementById('sync-badge');
+                if (badge) badge.innerHTML = '<i class="fa-solid fa-cloud-slash text-slate-500 mr-1"></i> офлайн';
+            }
+        }
+
+        // ==========================================
+        // 15. ИНИЦИАЛИЗАЦИЯ
+        // ==========================================
+        async function initApp() {
+            const restored = loadLocalBackup();
+            if (!restored || state.activeWorkout.length === 0) loadDefaultChestWorkout();
+            else renderActiveWorkout();
+
+            renderExercisesCatalog();
+            populateAnalyticsSelector();
+            applyChartMetricUI();
+
+            // Восстановить вкладку
+            if (state.lastTab && state.lastTab !== 'workout') {
+                switchTab(state.lastTab);
+            }
+
+            // Firebase грузим асинхронно — не блокирует офлайн-функционал
+            initFirebase();
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
